@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import InstallPWA from './InstallPWA';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -18,6 +19,7 @@ const Navbar = () => {
         <h1>Chat App</h1>
       </div>
       <div className="navbar-user">
+        <InstallPWA />
         <div className="user-avatar-small" style={{ backgroundColor: `hsl(${user.name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)}deg, 70%, 50%)` }}>
           {user.name.charAt(0).toUpperCase()}
         </div>

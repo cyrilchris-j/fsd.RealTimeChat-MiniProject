@@ -5,6 +5,9 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import './styles/main.css';
+import { registerSW } from 'virtual:pwa-register';
+
+registerSW({ immediate: true });
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
