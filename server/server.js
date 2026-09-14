@@ -31,7 +31,14 @@ const allowedOrigins = [
 
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
+  const cleanOrigin = origin.replace(/\/$/, '');
+  const cleanClientUrl = (process.env.CLIENT_URL || '').replace(/\/$/, '');
+  if (cleanClientUrl && cleanOrigin === cleanClientUrl) return true;
   if (allowedOrigins.includes(origin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    if (hostname.endsWith('.vercel.app')) return true;
+  } catch {}
   if (/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) return true;
   return false;
 };
