@@ -29,6 +29,14 @@ const Login = () => {
     const result = await login(formData);
     if (result.success) {
       navigate('/');
+    } else if (result.requireOtp) {
+      navigate('/register', {
+        state: {
+          requireOtp: true,
+          email: result.email,
+          message: result.message
+        }
+      });
     } else {
       setLocalError(result.message);
     }

@@ -36,6 +36,14 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       const response = await authAPI.register(data);
+      if (response.data.requireOtp) {
+        return {
+          success: true,
+          requireOtp: true,
+          email: response.data.email,
+          message: response.data.message
+        };
+      }
       const { token, ...userData } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
@@ -43,6 +51,22 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (err) {
       const message = err.response?.data?.message || 'Registration failed';
+      setError(message);
+      return { success: false, message };
+    }
+  };
+
+  const verifyOtp = async (email, otp) => {
+    setError(null);
+    try {
+      const response = await authAPI.verifyOtp(email, otp);
+      const { token, ...userData } = response.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      return { success: true, message: response.data.message };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Verification failed';
       setError(message);
       return { success: false, message };
     }
@@ -58,6 +82,14 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       return { success: true };
     } catch (err) {
+      if (err.response?.data?.requireOtp) {
+        return {
+          success: false,
+          requireOtp: true,
+          email: err.response.data.email,
+          message: err.response.data.message
+        };
+      }
       const message = err.response?.data?.message || 'Login failed';
       setError(message);
       return { success: false, message };
@@ -96,7 +128,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, register, login, googleLogin, logout, updateUser, setError }}>
+    <AuthContext.Provider value={{ user, loading, error, register, verifyOtp, login, googleLogin, logout, updateUser, setError }}>
       {children}
     </AuthContext.Provider>
   );

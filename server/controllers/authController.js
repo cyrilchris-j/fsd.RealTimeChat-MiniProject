@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import sendEmail, { getPasswordResetTemplate } from '../utils/sendEmail.js';
+import getOtpEmailTemplate from '../utils/otpTemplate.js';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -51,35 +52,65 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: 'Username can only contain letters, numbers, and underscores' });
     }
 
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
-    if (existingUser) {
-      if (existingUser.email === email) {
-        return res.status(400).json({ message: 'Email already in use' });
+    const existingUser = await User.findOne({ $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }] });
+    if (existingUser && existingUser.isVerified) {
+      if (existingUser.email === email.toLowerCase()) {
+        return res.status(400).json({ message: 'An account with this email is already registered and verified. Please sign in.' });
       }
-      return res.status(400).json({ message: 'Username already taken' });
+      return res.status(400).json({ message: 'Username is already taken. Please choose another.' });
     }
 
+    // Generate 6-digit OTP
+    const rawOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = crypto.createHash('sha256').update(rawOtp).digest('hex');
+    const otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const user = await User.create({
-      name,
-      username: username.toLowerCase(),
-      email: email.toLowerCase(),
-      password: hashedPassword
-    });
+    // Send real OTP email to the user's inbox
+    try {
+      const emailHtml = getOtpEmailTemplate(rawOtp, name);
+      await sendEmail({
+        to: email.toLowerCase().trim(),
+        subject: 'ChatApp - Verify Your Email Address',
+        text: `Hello ${name},\n\nYour 6-digit verification code for ChatApp is: ${rawOtp}\n\nThis code will expire in 10 minutes.`,
+        html: emailHtml
+      });
+    } catch (mailError) {
+      console.error('Failed to send OTP email:', mailError.message);
+      return res.status(500).json({
+        message: 'Could not send verification email to this address. Please ensure you entered a valid, active email.'
+      });
+    }
 
-    const token = generateToken(user._id);
+    // If an unverified user existed with this email, update their details
+    let user;
+    if (existingUser && !existingUser.isVerified && existingUser.email === email.toLowerCase()) {
+      existingUser.name = name;
+      existingUser.username = username.toLowerCase();
+      existingUser.password = hashedPassword;
+      existingUser.otp = hashedOtp;
+      existingUser.otpExpire = otpExpire;
+      existingUser.isVerified = false;
+      user = await existingUser.save();
+    } else {
+      user = await User.create({
+        name,
+        username: username.toLowerCase(),
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        otp: hashedOtp,
+        otpExpire,
+        isVerified: false
+      });
+    }
 
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      username: user.username,
+    res.status(200).json({
+      requireOtp: true,
       email: user.email,
-      avatar: user.avatar,
-      isOnline: user.isOnline,
-      lastSeen: user.lastSeen,
-      token
+      message: `A 6-digit verification code has been sent to ${user.email}. Please enter the code to complete registration.`
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -112,6 +143,34 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check if email is verified
+    if (!user.isVerified) {
+      // Generate fresh OTP
+      const rawOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      const hashedOtp = crypto.createHash('sha256').update(rawOtp).digest('hex');
+      user.otp = hashedOtp;
+      user.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+      await user.save();
+
+      try {
+        const emailHtml = getOtpEmailTemplate(rawOtp, user.name);
+        await sendEmail({
+          to: user.email,
+          subject: 'ChatApp - Verify Your Email Address',
+          text: `Hello ${user.name},\n\nYour 6-digit verification code for ChatApp is: ${rawOtp}\n\nThis code will expire in 10 minutes.`,
+          html: emailHtml
+        });
+      } catch (mailErr) {
+        console.error('Failed to send OTP during login:', mailErr.message);
+      }
+
+      return res.status(403).json({
+        requireOtp: true,
+        email: user.email,
+        message: 'Your email address is not verified yet. We have sent a 6-digit verification code to your email.'
+      });
+    }
+
     const token = generateToken(user._id);
 
     res.json({
@@ -127,6 +186,96 @@ export const login = async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error during login' });
+  }
+};
+
+export const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and 6-digit verification code are required' });
+    }
+
+    const hashedOtp = crypto.createHash('sha256').update(otp.trim()).digest('hex');
+
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+      otp: hashedOtp,
+      otpExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired verification code. Please check and try again or request a new code.' });
+    }
+
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpire = undefined;
+    await user.save();
+
+    const token = generateToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Email verified successfully! Welcome to ChatApp.',
+      _id: user._id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar,
+      isOnline: user.isOnline,
+      lastSeen: user.lastSeen,
+      token
+    });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ message: 'Server error during verification' });
+  }
+};
+
+export const resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({ message: 'No account found with this email' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'This email is already verified. Please sign in.' });
+    }
+
+    const rawOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = crypto.createHash('sha256').update(rawOtp).digest('hex');
+
+    user.otp = hashedOtp;
+    user.otpExpire = Date.now() + 10 * 60 * 1000;
+    await user.save();
+
+    try {
+      const emailHtml = getOtpEmailTemplate(rawOtp, user.name);
+      await sendEmail({
+        to: user.email,
+        subject: 'ChatApp - Your New Verification Code',
+        text: `Hello ${user.name},\n\nYour new 6-digit verification code is: ${rawOtp}\n\nThis code will expire in 10 minutes.`,
+        html: emailHtml
+      });
+    } catch (mailError) {
+      console.error('Failed to resend OTP:', mailError.message);
+      return res.status(500).json({ message: 'Could not send verification email. Please try again later.' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `A new 6-digit verification code has been sent to ${user.email}`
+    });
+  } catch (error) {
+    console.error('Resend OTP error:', error);
+    res.status(500).json({ message: 'Server error while resending verification code' });
   }
 };
 
@@ -160,8 +309,15 @@ export const forgotPassword = async (req, res) => {
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
     await user.save();
 
-    // Construct reset URL for the email
-    const clientUrl = process.env.CLIENT_URL || req.headers.origin || 'http://localhost:5173';
+    // Dynamically resolve client origin from request headers (supports port 5174, Vercel, custom domain)
+    let clientOrigin = req.headers.origin;
+    if (!clientOrigin && req.headers.referer) {
+      try {
+        const ref = new URL(req.headers.referer);
+        clientOrigin = `${ref.protocol}//${ref.host}`;
+      } catch {}
+    }
+    const clientUrl = clientOrigin || process.env.CLIENT_URL || 'http://localhost:5173';
     const cleanClientUrl = clientUrl.replace(/\/$/, '');
     const resetUrl = `${cleanClientUrl}/reset-password/${resetToken}`;
 
