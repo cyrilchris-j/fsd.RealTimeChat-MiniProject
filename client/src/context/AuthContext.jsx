@@ -64,6 +64,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const googleLogin = async (credential) => {
+    setError(null);
+    try {
+      const response = await authAPI.googleLogin(credential);
+      const { token, ...userData } = response.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Google authentication failed';
+      setError(message);
+      return { success: false, message };
+    }
+  };
+
   const logout = () => {
     socketService.disconnect();
     localStorage.removeItem('token');
@@ -80,7 +96,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, register, login, logout, updateUser, setError }}>
+    <AuthContext.Provider value={{ user, loading, error, register, login, googleLogin, logout, updateUser, setError }}>
       {children}
     </AuthContext.Provider>
   );

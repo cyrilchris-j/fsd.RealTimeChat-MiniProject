@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ErrorMessage from '../components/ErrorMessage';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 
 const Login = () => {
   const { login, error: authError, setError } = useAuth();
@@ -80,7 +81,16 @@ const Login = () => {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        <p className="auth-footer">
+
+        <div style={{ display: 'flex', alignItems: 'center', margin: '18px 0', color: 'var(--text-muted, #64748b)' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color, #e2e8f0)' }}></div>
+          <span style={{ padding: '0 10px', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>or continue with</span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color, #e2e8f0)' }}></div>
+        </div>
+
+        <GoogleAuthButton onError={(msg) => setLocalError(msg)} />
+
+        <p className="auth-footer" style={{ marginTop: '20px' }}>
           Don't have an account? <Link to="/register">Sign up</Link>
         </p>
       </div>

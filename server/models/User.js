@@ -27,13 +27,23 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters'],
-    select: false
+    select: false,
+    required: function() {
+      return !this.googleId;
+    }
   },
   avatar: {
     type: String,
     default: ''
+  },
+  googleId: {
+    type: String,
+    default: null
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
   },
   isOnline: {
     type: Boolean,

@@ -44,37 +44,65 @@ const ForgotPassword = () => {
         </div>
 
         {resetData ? (
-          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
             <div
               style={{
-                width: '56px',
-                height: '56px',
+                width: '64px',
+                height: '64px',
                 borderRadius: '50%',
-                background: '#ecfdf5',
-                color: '#10b981',
+                background: 'rgba(37, 99, 235, 0.1)',
+                color: 'var(--primary, #2563eb)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 16px',
-                fontSize: '24px'
+                fontSize: '28px'
               }}
             >
-              ✓
+              ✉️
             </div>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: '600', marginBottom: '8px', color: 'var(--text-main)' }}>
-              Reset Link Ready
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '8px', color: 'var(--text-main)' }}>
+              Check Your Email Inbox
             </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px' }}>
-              Your secure password reset verification has been generated for <strong>{email}</strong>.
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', lineHeight: '1.5', marginBottom: '20px' }}>
+              We have sent a secure password reset link to:
+              <br />
+              <strong style={{ color: 'var(--text-main)', display: 'inline-block', marginTop: '4px' }}>{email}</strong>
             </p>
-            <button
-              className="btn btn-primary btn-full"
-              onClick={() => navigate(resetData.resetUrl || `/reset-password/${resetData.resetToken}`)}
-              style={{ marginBottom: '14px' }}
+            <div
+              style={{
+                background: 'var(--bg-app, #f8fafc)',
+                border: '1px solid var(--border-color, #e2e8f0)',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                fontSize: '0.85rem',
+                color: 'var(--text-muted, #64748b)',
+                textAlign: 'left',
+                marginBottom: '24px',
+                lineHeight: '1.4'
+              }}
             >
-              Set New Password
-            </button>
-            <p className="auth-footer" style={{ marginTop: '8px' }}>
+              💡 <strong>Next Step:</strong> Open your email app or inbox and click the <strong>Reset My Password</strong> button in the email to set your new password. (The link is valid for 15 minutes).
+            </div>
+            <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+              <a
+                href="https://mail.google.com"
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-primary btn-full"
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                Open Gmail Inbox
+              </a>
+              <button
+                type="button"
+                className="btn btn-secondary btn-full"
+                onClick={() => setResetData(null)}
+              >
+                Try another email
+              </button>
+            </div>
+            <p className="auth-footer" style={{ marginTop: '20px' }}>
               Remember your password? <Link to="/login">Sign in</Link>
             </p>
           </div>
