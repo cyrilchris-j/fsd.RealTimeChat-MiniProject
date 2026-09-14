@@ -21,7 +21,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
   });
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || `"Real-Time Chat" <${emailUser}>`,
+    from: process.env.EMAIL_FROM || `"ChatApp" <${emailUser}>`,
     to,
     subject,
     text,
@@ -54,7 +54,7 @@ export const getPasswordResetTemplate = (resetUrl, userName = 'User') => {
       <body>
         <div class="container">
           <div class="header">
-            <h1>Real-Time Chat</h1>
+            <h1>ChatApp</h1>
           </div>
           <div class="content">
             <p>Hello <strong>${userName}</strong>,</p>
@@ -69,7 +69,7 @@ export const getPasswordResetTemplate = (resetUrl, userName = 'User') => {
             <p><a href="${resetUrl}" class="raw-link">${resetUrl}</a></p>
           </div>
           <div class="footer">
-            &copy; ${new Date().getFullYear()} Real-Time Chat. All rights reserved.
+            &copy; ${new Date().getFullYear()} ChatApp. All rights reserved.
           </div>
         </div>
       </body>

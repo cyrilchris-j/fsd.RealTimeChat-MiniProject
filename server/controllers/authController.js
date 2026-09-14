@@ -169,8 +169,8 @@ export const forgotPassword = async (req, res) => {
       const emailHtml = getPasswordResetTemplate(resetUrl, user.name);
       await sendEmail({
         to: user.email,
-        subject: 'Real-Time Chat - Password Reset Request',
-        text: `Hello ${user.name},\n\nPlease use the following link to reset your password:\n${resetUrl}\n\nThis link will expire in 15 minutes.\nIf you did not request this, please ignore this email.`,
+        subject: 'ChatApp - Password Reset Request',
+        text: `Hello ${user.name},\n\nPlease use the following link to reset your password for ChatApp:\n${resetUrl}\n\nThis link will expire in 15 minutes.\nIf you did not request this, please ignore this email.`,
         html: emailHtml
       });
 
